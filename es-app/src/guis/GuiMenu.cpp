@@ -5345,6 +5345,21 @@ void GuiMenu::openSoundSettings()
 		s->addSwitch(_("SHOW OVERLAY WHEN VOLUME CHANGES"), "VolumePopup", true);
 	}
 
+	if (!Utils::Platform::GetEnv("DEVICE_MONO_SPEAKER_SINK").empty())
+	{
+		// The jack is not detected on these devices, so stereo for headphones is a manual choice
+		auto mono_speaker = std::make_shared<SwitchComponent>(mWindow);
+		mono_speaker->setState(SystemConf::getInstance()->get("audio.mono") != "0");
+		s->addWithDescription(_("MONO SPEAKER"), _("Turn off to get stereo on headphones"), mono_speaker);
+		SwitchComponent* monoSwitch = mono_speaker.get();
+		mono_speaker->setOnChangedCallback([monoSwitch]
+		{
+			bool enabled = monoSwitch->getState();
+			Utils::Platform::runSystemCommand(enabled ? "/usr/bin/mono_speaker enable" : "/usr/bin/mono_speaker disable", "", nullptr);
+			SystemConf::getInstance()->set("audio.mono", enabled ? "1" : "0");
+		});
+	}
+
 	s->addGroup(_("MUSIC"));
 
 	s->addSwitch(_("FRONTEND MUSIC"), "audio.bgmusic", true, []
